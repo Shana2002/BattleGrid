@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Phaser.js Game</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      #game-container {
+        width: 100vw;
+        height: 80vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: black; /* Optional */
+      }
+      #status-bar {
+        width: 100vw;
+        height: 20vh;
+        background: #222;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        font-family: Arial, sans-serif;
+        font-size: 20px;
+        padding: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game-container"></div>
+    <!-- Status bar -->
+    <div id="status-bar">
+      <span>HP: <span id="player-hp">5</span></span>
+      <span>Gun: Pistol</span>
+      <span>Player: JohnDoe</span>
+      <span>Score: <span id="player-score">0</span></span>
+    </div>
+    <script src="./js/main.js"></script>
+  </body>
+</html>

@@ -29,7 +29,7 @@ Thumbs.db
 # Build artifacts
 dist/
 build/
-public/
+
 
 # Debugging files
 *.pid
