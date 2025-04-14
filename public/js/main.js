@@ -41,6 +41,7 @@ const config = {
 };
 
 let background,
+  keys,
   player,
   cursors,
   wallGroup,
@@ -123,6 +124,12 @@ function create() {
 
   // Create cursor keys for movement
   cursors = this.input.keyboard.createCursorKeys();
+  keys = this.input.keyboard.addKeys({
+    up: Phaser.Input.Keyboard.KeyCodes.W,
+    down: Phaser.Input.Keyboard.KeyCodes.S,
+    left: Phaser.Input.Keyboard.KeyCodes.A,
+    right: Phaser.Input.Keyboard.KeyCodes.D
+  });
   
   wallGroup = this.physics.add.staticGroup();
   // Create the wall group
@@ -142,25 +149,48 @@ function create() {
 function update() {
   let dx = 0,
     dy = 0;
-  if (cursors.left.isDown) {
-    dx = -5;
-    playerSide = "right";
-  }
-  if (cursors.right.isDown) {
-    dx = 5;
-    playerSide = "left";
-  }
-  if (cursors.up.isDown) dy = -5;
-  if (cursors.down.isDown) dy = 5;
+  if (keys.left.isDown) dx = -5;
+  if (keys.right.isDown) dx = 5;
+  if (keys.up.isDown) dy = -5;
+  if (keys.down.isDown) dy = 5;
 
   if (dx || dy) {
     socket.emit("move", { dx, dy, playerSide });
   }
 
+  if(cursors.left.isDown) {
+    playerSide = "left";
+    socket.emit("changeSide", {playerSide});
+  }
+  if(cursors.right.isDown) {
+    playerSide = "right";
+    socket.emit("changeSide", {playerSide});
+  }
+
   // // Shooting bullets
   if (Phaser.Input.Keyboard.JustDown(spacebar)) {
+    let fireSide = playerSide;
     // fireBullet(players[socket.id].x, players[socket.id].y);
-    socket.emit("shoot", { x: players[socket.id].x, y: players[socket.id].y });
+    if (cursors.left.isDown && cursors.up.isDown) {
+      fireSide = "top-left";
+    } else if (cursors.right.isDown && cursors.up.isDown) {
+      fireSide = "top-right";
+    } else if (cursors.left.isDown && cursors.down.isDown) {
+      fireSide = "bottom-left";
+    } else if (cursors.right.isDown && cursors.down.isDown) {
+      fireSide = "bottom-right";
+    } else if (cursors.left.isDown) {
+      fireSide = "left";
+    } else if (cursors.right.isDown) {
+      fireSide = "right";
+    } else if (cursors.up.isDown) {
+      fireSide = "top";
+    } else if (cursors.down.isDown) {
+      fireSide = "bottom";
+    }
+    console.log(fireSide);
+
+    socket.emit("shoot", { x: players[socket.id].x, y: players[socket.id].y,fireSide:fireSide });
   }
 
   // // Render all players and bullets
@@ -177,7 +207,7 @@ function update() {
     } else {
       // Update the position of the existing player sprite
       playersContainer[id].setPosition(p.x, p.y);
-      if (p.side === "right") {
+      if (p.side === "left") {
         playersContainer[id].setFlipX(true);
       } else {
         playersContainer[id].setFlipX(false);
@@ -196,20 +226,47 @@ function update() {
       bulletContainer[id] = this.physics.add
         .sprite(b.x, b.y, "bullet")
         .setScale(0.1);
+        switch (b.fireSide) {
+          case "top":
+            bulletContainer[id].setAngle(-90);
+            break;
+          case "bottom":
+            bulletContainer[id].setAngle(90);
+            break;
+          case "left":
+            bulletContainer[id].setAngle(180);
+            break;
+          case "right":
+            bulletContainer[id].setAngle(0);
+            break;
+          case "top-left":
+            bulletContainer[id].setAngle(-135);
+            break;
+          case "top-right":
+            bulletContainer[id].setAngle(-45);
+            break;
+          case "bottom-left":
+            bulletContainer[id].setAngle(135);
+            break;
+          case "bottom-right":
+            bulletContainer[id].setAngle(45);
+            break;
+        }
+        
     } else {
       bulletContainer[id].setPosition(b.x, b.y);
     }
   });
-  bulletList.forEach((b) => {
-    let id = b.id;
-    if (!bulletContainer[id]) {
-      bulletContainer[id] = this.physics.add
-        .sprite(b.x, b.y, "bullet")
-        .setScale(0.1);
-    } else {
-      bulletContainer[id].setPosition(b.x, b.y);
-    }
-  });
+  // bulletList.forEach((b) => {
+  //   let id = b.id;
+  //   if (!bulletContainer[id]) {
+  //     bulletContainer[id] = this.physics.add
+  //       .sprite(b.x, b.y, "bullet")
+  //       .setScale(0.1);
+  //   } else {
+  //     bulletContainer[id].setPosition(b.x, b.y);
+  //   }
+  // });
   for (let id in bulletContainer) {
     if (!bulletList.some((b) => b.id === id)) {
       bulletContainer[id].destroy();

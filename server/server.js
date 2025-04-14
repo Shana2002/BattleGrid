@@ -35,7 +35,6 @@ const minX = -900 ,minY = -1495 , maxX = 3900 , maxY= 3400;
 let gunSpawnList = [];
 app.use(express.static("public"));
 function share(){
-    console.log("hiefdfkfsdf")
     io.emit("updateWalls", walls);
 }
 io.on("connection", (socket) => {
@@ -93,11 +92,19 @@ io.on("connection", (socket) => {
             // io.emit("updatePlayers", players);
         }
     });
+
+    socket.on("changeSide",(data)=>{
+        if (players[socket.id]) {
+            const current = players[socket.id];
+            current.side = data.playerSide;
+            io.emit("updatePlayers", players);
+        }
+    })
     
     // Shooting
     socket.on("shoot", (data) => {
         const timestamp = Date.now();
-        bullets.push({id:timestamp+socket.id, x: data.x, y: data.y, owner: socket.id ,side :players[socket.id].side,startX:data.x,startY:data.y });
+        bullets.push({id:timestamp+socket.id, x: data.x, y: data.y, owner: socket.id ,side :players[socket.id].side,startX:data.x,startY:data.y ,fireSide: data.fireSide});
         // console.log(bullets);
         io.emit("updateBullets", bullets);
     });
@@ -106,8 +113,14 @@ io.on("connection", (socket) => {
     setInterval(() => {
         bullets = bullets.map(bullet => ({
             ...bullet,
-            x: bullet.side==="left"? bullet.x+ gunMap.get(players[bullet.owner].gun).speed:bullet.x -gunMap.get(players[bullet.owner].gun).speed ,  // Move in the direction it was fired
-            y: bullet.side==="left"? bullet.y+ gunMap.get(players[bullet.owner].gun).speed:bullet.y -gunMap.get(players[bullet.owner].gun).speed
+            x: bullet.fireSide==="left" || bullet.fireSide==="top-left" || bullet.fireSide==="bottom-left" ? bullet.x- gunMap.get(players[bullet.owner].gun).speed:
+                bullet.fireSide==="right" || bullet.fireSide==="top-right" || bullet.fireSide==="bottom-right"  ? bullet.x +gunMap.get(players[bullet.owner].gun).speed:
+                bullet.x,
+            y: bullet.fireSide==="top" || bullet.fireSide==="top-left" || bullet.fireSide==="top-right" ? bullet.y- gunMap.get(players[bullet.owner].gun).speed:
+            bullet.fireSide==="bottom" || bullet.fireSide==="bottom-left" || bullet.fireSide==="bottom-right"  ? bullet.y +gunMap.get(players[bullet.owner].gun).speed:
+            bullet.y,
+            // x: bullet.side==="left"? bullet.x+ gunMap.get(players[bullet.owner].gun).speed:bullet.x -gunMap.get(players[bullet.owner].gun).speed ,  // Move in the direction it was fired
+            // y: bullet.side==="left"? bullet.y+ gunMap.get(players[bullet.owner].gun).speed:bullet.y -gunMap.get(players[bullet.owner].gun).speed
             // y: bullet.y + 1 
         })).filter(b => b.x < 3955 && b.x > -930 && Math.abs(b.startX-b.x)<gunMap.get(players[b.owner].gun).length); // filter(b => b.x > 3955 && b.x < -930 && b.y > 3435 && b.y < -1450
         bullets.forEach((bullet, index) => {
