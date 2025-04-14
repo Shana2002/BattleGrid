@@ -3,8 +3,8 @@ let players = {};
 let playersContainer = {};
 let bulletList = [];
 let bulletContainer = {};
-let gunSpawn = [];
-let gunContainer = {};
+let gunSpawn = [],mediSpawn=[];
+let gunContainer = {},mediSpawnContainer = {};
 let wallList = [];
 
 setInterval(() => {
@@ -68,6 +68,7 @@ function preload() {
   this.load.image("pistol", "./assets/pistol_icon.png");
   this.load.image("ak47", "./assets/ak47.webp");
   this.load.image("m16", "./assets/m16.jpg");
+  this.load.image("medi", "./assets/medipack1.png");
 }
 
 function create() {
@@ -109,6 +110,12 @@ function create() {
     gunSpawn = data;
   });
 
+  socket.on("updateMediPack", (data) => {
+    // console.log("Hello");
+    // console.log(data);
+    mediSpawn = data;
+  });
+
   socket.on("playerEliminated", (id) => {
     if (id === socket.id) {
       alert("You have been eliminated!");
@@ -147,6 +154,8 @@ function create() {
 }
 
 function update() {
+  // movement
+  // arrow keys movement
   let dx = 0,
     dy = 0;
   if (keys.left.isDown) dx = -5;
@@ -157,7 +166,7 @@ function update() {
   if (dx || dy) {
     socket.emit("move", { dx, dy, playerSide });
   }
-
+  // player side chanage
   if(cursors.left.isDown) {
     playerSide = "left";
     socket.emit("changeSide", {playerSide});
@@ -166,11 +175,10 @@ function update() {
     playerSide = "right";
     socket.emit("changeSide", {playerSide});
   }
-
   // // Shooting bullets
   if (Phaser.Input.Keyboard.JustDown(spacebar)) {
     let fireSide = playerSide;
-    // fireBullet(players[socket.id].x, players[socket.id].y);
+    // side define bullet
     if (cursors.left.isDown && cursors.up.isDown) {
       fireSide = "top-left";
     } else if (cursors.right.isDown && cursors.up.isDown) {
@@ -188,7 +196,6 @@ function update() {
     } else if (cursors.down.isDown) {
       fireSide = "bottom";
     }
-    console.log(fireSide);
 
     socket.emit("shoot", { x: players[socket.id].x, y: players[socket.id].y,fireSide:fireSide });
   }
@@ -251,22 +258,11 @@ function update() {
           case "bottom-right":
             bulletContainer[id].setAngle(45);
             break;
-        }
-        
+        }   
     } else {
       bulletContainer[id].setPosition(b.x, b.y);
     }
   });
-  // bulletList.forEach((b) => {
-  //   let id = b.id;
-  //   if (!bulletContainer[id]) {
-  //     bulletContainer[id] = this.physics.add
-  //       .sprite(b.x, b.y, "bullet")
-  //       .setScale(0.1);
-  //   } else {
-  //     bulletContainer[id].setPosition(b.x, b.y);
-  //   }
-  // });
   for (let id in bulletContainer) {
     if (!bulletList.some((b) => b.id === id)) {
       bulletContainer[id].destroy();
@@ -282,6 +278,7 @@ function update() {
   //   }
   // }
 
+  // guns spawn
   gunSpawn.forEach((gun) => {
     // Loop through the array of gun objects
     let id = gun.id; // Get the gun's ID
@@ -308,41 +305,31 @@ function update() {
     }
   });
 
+  // Medi pack spawn
+  mediSpawn.forEach((medi)=>{
+    let id = medi.id;
+    if(!mediSpawnContainer[id]){
+      mediSpawnContainer[id] = this.physics.add
+      .sprite(medi.x, medi.y, "medi").setScale(0.5);
+    }else{
+      mediSpawnContainer[id].setPosition(medi.x, medi.y);
+    }
+  })
+
   for (let id in gunContainer) {
     if (!gunSpawn.some((b) => b.id === id)) {
       gunContainer[id].destroy();
       delete gunContainer[id]; // Remove it from playersContainer
     }
   }
-  // socket.on("updateBullets", (other) => {
-  //   for (let b in other) {
 
-  //     let bullet = this.physics.add.sprite(b.x, b.y, 'bullet').setScale(0.8);
-  //     console.log(b.x);
-  //   };
-  // })
-  // for(let b in bulletList){
-  //   console.log(b.x);
+  for (let id in mediSpawnContainer) {
+    if (!mediSpawn.some((m) => m.id === id)) {
+      mediSpawnContainer[id].destroy();
+      delete mediSpawnContainer[id]; // Remove it from playersContainer
+    }
+  }
 
-  // }
-
-  // socket.on("updateBullets", (bullets) => {
-  //   bullets.forEach(bullet1 => {
-  //     // Create or reuse a bullet sprite
-  //     let bullet = this.physics.add.sprite(bullet1.x, bullet1.y, 'bullet');
-
-  //     if (bullet) {
-  //       bullet.setActive(true);
-  //       bullet.setVisible(true);
-  //       bullet.setScale(0.1);
-
-  //       // Set direction based on side
-  //       if (bullet1.side === "right") bullet.setVelocityX(-500);
-  //       if (bullet1.side === "left") bullet.setVelocityX(500);
-  //     }
-  //     socket.emit("removebullet",bullet1);
-  //   });
-  // });
 
   // Remove players that are no longer present
   for (let id in playersContainer) {
@@ -354,69 +341,8 @@ function update() {
   }
 }
 
-function fireBullet(x, y) {
-  let bullet = bullets.get(x, y, "bullet"); // Get a bullet from the group
-  console.log(bullet);
-  if (bullet) {
-    bullet.setActive(true);
-    bullet.setVisible(true);
-    bullet.setScale(0.1);
-    // bullet.body.velocity.y = -300; // Move bullet upward
-    if (playerSide === "left") bullet.setVelocityX(-500);
-    if (playerSide === "right") bullet.setVelocityX(500);
-  }
-}
 
-function fireEnemyBullets(scene) {
-  enemies.children.iterate((enemy) => {
-    if (enemy.active) {
-      let bullet = enemyBullets.get(enemy.x, enemy.y);
-      if (bullet) {
-        bullet
-          .setActive(true)
-          .setVisible(true)
-          .setScale(0.05)
-          .setVelocityY(300);
-        scene.physics.world.enable(bullet);
-      }
-    }
-  });
-  enemyBulletTime = scene.time.now + Phaser.Math.Between(1000, 2000);
-}
 
-function hitPlayer(player, bullet) {
-  bullet.destroy();
-  playerHP -= 1;
-  document.getElementById("player-hp").innerHTML = playerHP;
-  console.log(`Player HP: ${playerHP}`);
-  if (playerHP <= 0) {
-    console.log("Game Over!");
-    player.destroy();
-  }
-}
 
-function hitEnemy(bullet, enemy) {
-  // Deactivate bullet
-  bullet.setActive(false);
-  bullet.setVisible(false);
-  bullet.destroy(); // Ensure it disappears
-
-  // Reduce enemy HP
-  enemy.hp -= 1;
-  console.log(`Enemy HP: ${enemy.hp}`);
-
-  // Stop enemy from moving with the bullet
-  enemy.setVelocity(0, 0);
-
-  if (enemy.hp <= 0) {
-    // Delay before removing the enemy for a better effect
-    this.time.delayedCall(200, () => {
-      enemy.setActive(false);
-      enemy.setVisible(false);
-      enemy.destroy();
-      console.log("Enemy defeated!");
-    });
-  }
-}
 
 new Phaser.Game(config);

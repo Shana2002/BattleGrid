@@ -3,6 +3,7 @@ import http from 'http'
 import {Server} from 'socket.io'
 import {gunMap,RandomGenerateGun} from './GameLogic/gunLogic.js'
 import {walls,isCollidingWithWall ,isBulletCollidingWithWall} from './GameLogic/wallLogic.js'
+import {randomGenereteMediPack} from './GameLogic/healthLogic.js'
 import cors from 'cors'
 
 const app = express();
@@ -33,6 +34,7 @@ let safeZone = { x: 400, y: 300, radius: 250 };
 
 const minX = -900 ,minY = -1495 , maxX = 3900 , maxY= 3400; 
 let gunSpawnList = [];
+let mediSpawnList = [];
 app.use(express.static("public"));
 function share(){
     io.emit("updateWalls", walls);
@@ -162,6 +164,22 @@ io.on("connection", (socket) => {
                     io.emit("updateGun",gunSpawnList);
                 }
             }
+        });
+        mediSpawnList.forEach((medi,index)=>{
+            for(let id in players){
+                let player = players[id];
+                let dx = medi.x - player.x;
+                let dy = medi.y - player.y;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < 20){
+                    if (player.health <100){
+                        player.health = player.health + medi.health_increase;
+                        if (player.health>100) player.health = 100;
+                    }
+                    mediSpawnList.splice(index,1);
+                    io.emit("updateMediPack",mediSpawnList);
+                }
+            }
         })
 
         io.emit("updateBullets", bullets);
@@ -171,6 +189,8 @@ io.on("connection", (socket) => {
     
     setInterval(()=>{
         gunSpawnList = RandomGenerateGun(minX,minY,maxX,maxY);
+        mediSpawnList = randomGenereteMediPack(minX,minY,maxX,maxY);
+        io.emit("updateMediPack",mediSpawnList)
         io.emit("updateGun",gunSpawnList)
     },30000);
 
