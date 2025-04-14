@@ -164,7 +164,7 @@ function update() {
   if (keys.down.isDown) dy = 5;
 
   if (dx || dy) {
-    socket.emit("move", { dx, dy, playerSide });
+    socket.emit("move", { dx, dy });
   }
   // player side chanage
   if(cursors.left.isDown) {
