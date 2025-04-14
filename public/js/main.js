@@ -1,10 +1,10 @@
-const socket = io("http://localhost:3000");
+const socket = io();
 let players = {};
 let playersContainer = {};
 let bulletList = [];
 let bulletContainer = {};
-let gunSpawn = [],mediSpawn=[];
-let gunContainer = {},mediSpawnContainer = {};
+let gunSpawn = [],mediSpawn=[],bulletSpawn = [];
+let gunContainer = {},mediSpawnContainer = {} , bulletSpawnListContainer = {};
 let wallList = [];
 
 setInterval(() => {
@@ -69,6 +69,7 @@ function preload() {
   this.load.image("ak47", "./assets/ak47.webp");
   this.load.image("m16", "./assets/m16.jpg");
   this.load.image("medi", "./assets/medipack1.png");
+  this.load.image("bulletpack", "./assets/bulletpack.png");
 }
 
 function create() {
@@ -99,7 +100,9 @@ function create() {
         document.getElementById(
           "player-hp"
         ).innerText = `${players[id].health}`;
-        document.getElementById("player-gun").innerHTML = players[id].gun
+        document.getElementById("player-gun").innerHTML = players[id].gun;
+        document.getElementById("player-ammo").innerHTML = players[id].nBullets;
+        // console.log(players[id])
       }
     }
   });
@@ -116,15 +119,22 @@ function create() {
     mediSpawn = data;
   });
 
-  socket.on("playerEliminated", (id) => {
-    if (id === socket.id) {
-      alert("You have been eliminated!");
+  socket.on("playerEliminated", (data) => {
+    if (data.id === socket.id) {
+      alert(`You have been eliminated by  ${data.killed}`);
+      this.cameras.main.startFollow(playersContainer[data.killed].sprite, true, 0.1, 0.1);
     }
   });
 
   socket.on("updateBullets", (other) => {
     bulletList = other;
   });
+
+  socket.on("updateBulletPack", (other) => {
+    bulletSpawn = other;
+  });
+
+  
   // socket.on("updateBullets",(bullets)=>{
 
   // })
@@ -163,15 +173,23 @@ function update() {
   if (keys.up.isDown) dy = -5;
   if (keys.down.isDown) dy = 5;
 
+  if (keys.left.isDown || keys.right.isDown || keys.up.isDown || keys.down.isDown){
+    playersContainer[socket.id].sprite.anims.play("move", true);
+  }else{
+    if(playersContainer[socket.id]){
+      playersContainer[socket.id].sprite.anims.stop();
+      playersContainer[socket.id].sprite.setFrame(1);
+    }
+  }
   if (dx || dy) {
     socket.emit("move", { dx, dy });
   }
   // player side chanage
-  if(cursors.left.isDown) {
+  if(cursors.left.isDown || keys.left.isDown) {
     playerSide = "left";
     socket.emit("changeSide", {playerSide});
   }
-  if(cursors.right.isDown) {
+  if(cursors.right.isDown || keys.right.isDown) {
     playerSide = "right";
     socket.emit("changeSide", {playerSide});
   }
@@ -196,7 +214,7 @@ function update() {
     } else if (cursors.down.isDown) {
       fireSide = "bottom";
     }
-
+    if(!players[socket.id]) return;
     socket.emit("shoot", { x: players[socket.id].x, y: players[socket.id].y,fireSide:fireSide });
   }
 
@@ -206,23 +224,43 @@ function update() {
 
     // Check if the player already exists in playersContainer
     if (!playersContainer[id]) {
+      const sprite = this.add
+      .sprite(p.x, p.y, "player")
+      .setFrame(1)
+      .setScale(0.8);
+
+    // Create name text
+      const nameText = this.add
+      .text(p.x, p.y - 60, id || "Player", {
+        fontSize: "14px",
+        fill: id===socket.id?"#ffffff":"#ff0000",
+        align: "center",
+        stroke: "#000000",
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5, 0.5);
       // If the player does not exist, create a new player sprite
-      playersContainer[id] = this.add
-        .sprite(p.x, p.y, "player")
-        .setFrame(0)
-        .setScale(0.8);
+      playersContainer[id] = {
+        sprite,
+        nameText,
+      };
+        
     } else {
       // Update the position of the existing player sprite
-      playersContainer[id].setPosition(p.x, p.y);
+      playersContainer[id].sprite.setPosition(p.x, p.y);
+      playersContainer[id].nameText.setPosition(p.x, p.y-60);
       if (p.side === "left") {
-        playersContainer[id].setFlipX(true);
+        playersContainer[id].sprite.setFlipX(true);
       } else {
-        playersContainer[id].setFlipX(false);
+        playersContainer[id].sprite.setFlipX(false);
       }
     }
-    playersContainer[id].anims.play("move", true);
+    if(id!= socket.id){
+      playersContainer[id].sprite.anims.play("move", true);
+    }
+    
     if (id === socket.id) {
-      this.cameras.main.startFollow(playersContainer[id], true, 0.1, 0.1);
+      this.cameras.main.startFollow(playersContainer[id].sprite, true, 0.1, 0.1);
     }
   }
 
@@ -316,6 +354,16 @@ function update() {
     }
   })
 
+  bulletSpawn.forEach((bullet)=>{
+    let id = bullet.id;
+    if(!bulletSpawnListContainer[id]){
+      bulletSpawnListContainer[id] = this.physics.add
+      .sprite(bullet.x, bullet.y, "bulletpack").setScale(0.5);
+    }else{
+      bulletSpawnListContainer[id].setPosition(bullet.x, bullet.y);
+    }
+  })
+
   for (let id in gunContainer) {
     if (!gunSpawn.some((b) => b.id === id)) {
       gunContainer[id].destroy();
@@ -330,12 +378,20 @@ function update() {
     }
   }
 
+  for (let id in bulletSpawnListContainer) {
+    if (!bulletSpawn.some((m) => m.id === id)) {
+      bulletSpawnListContainer[id].destroy();
+      delete bulletSpawnListContainer[id]; // Remove it from playersContainer
+    }
+  }
+
 
   // Remove players that are no longer present
   for (let id in playersContainer) {
     if (!players.hasOwnProperty(id)) {
       // If the player is not in the server's players list, destroy it
-      playersContainer[id].destroy();
+      playersContainer[id].sprite.destroy();
+      playersContainer[id].nameText.destroy();
       delete playersContainer[id]; // Remove it from playersContainer
     }
   }

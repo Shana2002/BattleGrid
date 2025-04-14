@@ -12,3 +12,22 @@ export const randomGenereteMediPack = (minX,minY,maxX,maxY) =>{
     }
     return mediLoc;
 }
+
+export function mediCollions(mediSpawnList,players,io){
+    mediSpawnList.forEach((medi, index) => {
+          for (let id in players) {
+            let player = players[id];
+            let dx = medi.x - player.x;
+            let dy = medi.y - player.y;
+            let distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < 20) {
+              if (player.health < 100) {
+                player.health = player.health + medi.health_increase;
+                if (player.health > 100) player.health = 100;
+              }
+              mediSpawnList.splice(index, 1);
+              io.emit("updateMediPack", mediSpawnList);
+            }
+          }
+        });
+}
