@@ -1,0 +1,5 @@
+{
+  "watch": ["server", "public/shared", "package.json", ".env"],
+  "ignore": ["server/tests/**", "server/test.js"],
+  "ext": "js,json,env"
+}

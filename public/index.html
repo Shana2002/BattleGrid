@@ -3,48 +3,161 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Phaser.js Game</title>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script> -->
-    <script src="/socket.io/socket.io.js"></script>
-    <style>
-      body,
-      html {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-      }
-      #game-container {
-        width: 100vw;
-        height: 80vh;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        background-color: black; /* Optional */
-      }
-      #status-bar {
-        width: 100vw;
-        height: 20vh;
-        background: #222;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: space-around;
-        font-family: Arial, sans-serif;
-        font-size: 20px;
-        padding: 10px;
-      }
-    </style>
+    <meta name="theme-color" content="#f6f6f3" />
+    <meta name="description" content="Colorful multiplayer firefights and co-op zombie survival. Pick an operator, create a room, and bring your friends." />
+    <title>BattleGrid — Arena &amp; Zombies</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/css/app.css" />
+    <script defer src="/socket.io/socket.io.js"></script>
+    <script defer src="/js/phaser.min.js"></script>
+    <script type="module" src="/js/main.js"></script>
   </head>
   <body>
-    <div id="game-container"></div>
-    <!-- Status bar -->
-    <div id="status-bar">
-      <span>HP: <span id="player-hp">100</span></span>
-      <span>Gun: <span id="player-gun">Pistol</span></span>
-      <span>Player: JohnDoe</span>
-      <span>Ammo: <span id="player-ammo">0</span></span>
-    </div>
-    <script src="js/phaser.min.js"></script>
-    <script type="module" src="./js/main.js"></script>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="BattleGrid home">
+        <span class="brand-mark" aria-hidden="true">BG<span></span></span>
+        <span class="brand-wordmark">BattleGrid<span class="meta-label">ARENA + ZOMBIES / V3</span></span>
+      </a>
+      <div class="header-right">
+        <span id="connection-status" class="badge badge-info" role="status"><span class="status-dot" aria-hidden="true"></span><span id="connection-label">Connecting</span></span>
+        <span id="header-ping" class="meta-label">— ms</span>
+        <button id="profile-switch" class="btn btn-ghost" type="button" hidden><span id="profile-name"></span><span aria-hidden="true">↗</span></button>
+      </div>
+    </header>
+
+    <main id="main-content" tabindex="-1">
+      <section id="login-screen" class="screen login-layout" aria-labelledby="login-title">
+        <div class="hero-content">
+          <span class="eyebrow"><span class="eyebrow-line" aria-hidden="true"></span>BIG FIREFIGHTS. BIGGER HORDES.</span>
+          <h1 id="login-title" class="page-title hero-title">Good company.<br /><em>Great firefights.</em></h1>
+          <p class="hero-description">Your callsign. Your operator. Your people.<br />Outplay your friends, or survive the zombie horde together.</p>
+          <div class="hero-modes"><span class="badge badge-info">ARENA PVP</span><span class="badge badge-ok">CO-OP ZOMBIES</span><span class="meta-label">PLAY SOLO OR WITH FRIENDS</span></div>
+          <div class="hero-stage" aria-hidden="true">
+            <span class="stage-label meta-label">ASSEMBLE YOUR SQUAD</span>
+            <span class="stage-grid"></span>
+            <div class="hero-operator hero-recon"><span class="operator-sprite" data-portrait="recon"></span><span class="meta-label">02 / RECON</span></div>
+            <div class="hero-operator hero-vanguard"><span class="operator-sprite" data-portrait="vanguard"></span><span class="meta-label">01 / VANGUARD</span></div>
+            <div class="hero-operator hero-medic"><span class="operator-sprite" data-portrait="medic"></span><span class="meta-label">03 / MEDIC</span></div>
+            <span class="stage-coordinate meta-label">2400 × 1800 / LIVE</span>
+          </div>
+          <div class="stats-strip">
+            <div><span class="stat-number">04</span><span class="meta-label">DISTINCT OPERATORS</span></div>
+            <div><span class="stat-number">03</span><span class="meta-label">ARENA MAPS</span></div>
+            <div><span id="online-count" class="stat-number">—</span><span class="meta-label">PLAYERS IN MATCHES</span></div>
+          </div>
+        </div>
+        <div class="card login-card">
+          <span class="meta-label">01 / CHECK IN</span>
+          <h2 class="section-heading login-heading">What should we call you?</h2>
+          <p class="muted">Pick a callsign. The rest is up to you.</p>
+          <form id="login-form">
+            <div class="form-field">
+              <label class="form-label" for="callsign">YOUR CALLSIGN</label>
+              <input id="callsign" class="form-input" name="name" placeholder="e.g. Ghost_Runner" autocomplete="nickname" minlength="2" maxlength="20" required aria-describedby="login-message" />
+              <p id="login-message" class="form-hint">2–20 characters. Make it memorable.</p>
+            </div>
+            <div class="starter-preview">
+              <span class="starter-portrait"><span id="starter-sprite" class="operator-sprite" data-portrait="vanguard" aria-hidden="true"></span></span>
+              <div><span class="meta-label">YOUR STARTING OPERATOR</span><strong id="starter-name">Vanguard</strong><span class="muted body-small">Change your loadout in the lobby.</span></div>
+            </div>
+            <button id="login-button" class="btn btn-primary btn-wide" type="submit" data-requires-connection disabled><span>Enter the lobby</span><span aria-hidden="true">→</span></button>
+          </form>
+          <p class="guest-note"><span aria-hidden="true">◇</span> Guest login. No password, downloads, or account required.</p>
+          <div class="login-footnote"><span class="badge badge-ok">ZOMBIES INCLUDED</span><span class="meta-label">BRING YOUR FRIENDS</span></div>
+        </div>
+      </section>
+
+      <section id="lobby-screen" class="screen lobby-shell" aria-labelledby="lobby-title" hidden>
+        <div class="lobby-heading">
+          <div><span class="eyebrow">THE LOBBY / READY WHEN YOU ARE</span><h1 id="lobby-title" class="page-title">Make it your match.</h1><p id="lobby-mode-description" class="muted">Find a room, or make some room for your friends.</p></div>
+          <button id="quick-play" class="btn btn-primary" type="button" data-requires-connection><span aria-hidden="true">↗</span><span id="quick-play-label">Quick play</span></button>
+        </div>
+        <div class="lobby-grid">
+          <aside class="lobby-sidebar">
+            <div class="card server-panel">
+              <div class="section-topline"><span class="meta-label">01 / CONNECT</span><span id="host-status" class="badge badge-ok">LIVE HOST</span></div>
+              <h2 class="section-heading">Choose a server</h2>
+              <p class="body-small muted">Three maps. Both modes. One community host.</p>
+              <div id="server-list" class="server-list" aria-label="Arena servers"></div>
+              <p class="host-label meta-label" id="host-label"></p><p class="body-small muted">Player counts include both modes.</p>
+            </div>
+            <div class="card invite-panel">
+              <span class="meta-label">GOT AN INVITE?</span><h2 class="section-heading">Find your squad.</h2>
+              <p class="body-small muted">Enter a room code, including private rooms.</p>
+              <form id="invite-form" class="invite-form">
+                <label class="sr-only" for="invite-code">Six-character room invite code</label>
+                <input id="invite-code" class="form-input code-input" placeholder="A1B2C3" maxlength="6" minlength="6" pattern="[a-fA-F0-9]{6}" autocomplete="off" required />
+                <button id="join-invite" class="btn btn-secondary" type="submit" data-requires-connection>Join <span aria-hidden="true">→</span></button>
+              </form>
+            </div>
+            <div class="controls-note"><span class="meta-label">FIELD MANUAL</span><p><kbd>WASD</kbd> Move <kbd>SHIFT</kbd> Sprint</p><p><kbd>MOUSE / ↑↓←→</kbd> Aim</p><p><kbd>CLICK / SPACE</kbd> Fire <kbd>R</kbd> Reload</p></div>
+          </aside>
+           <div class="lobby-main">
+             <section class="card mode-panel" aria-labelledby="mode-title">
+               <div class="panel-heading"><div><span class="meta-label">02 / PLAY YOUR WAY</span><h2 id="mode-title" class="section-heading">Rivals or survivors?</h2></div><span class="badge badge-ok">NEW: ZOMBIES</span></div>
+               <div id="mode-list" class="mode-grid" aria-label="Game mode selection"></div>
+             </section>
+             <div class="card operator-panel">
+               <div class="panel-heading"><div><span class="meta-label">03 / EQUIP</span><h2 class="section-heading">Choose your operator</h2></div><span class="body-small muted">Different strengths. Same battlefield.</span></div>
+              <div id="character-list" class="operator-grid" aria-label="Operator selection"></div>
+            </div>
+            <section class="rooms-section" aria-labelledby="rooms-title">
+              <div class="panel-heading room-section-heading"><div><span class="meta-label" id="selected-server-label">OUTPOST / 01</span><h2 id="rooms-title" class="section-heading">Find your people.</h2></div><div class="button-group"><button id="refresh-rooms" class="btn btn-ghost icon-button" type="button" aria-label="Refresh room list" data-requires-connection>↻</button><button id="open-room-dialog" class="btn btn-secondary" type="button" data-requires-connection><span aria-hidden="true">＋</span>Create room</button></div></div>
+              <div class="room-toolbar"><label class="sr-only" for="room-search">Search room names</label><input id="room-search" class="form-input search-input" placeholder="Search rooms…" type="search" /><span id="room-count" class="meta-label">LOADING ROOMS</span></div>
+              <div id="rooms-message" class="state-surface" role="status">Connecting to the arena host…</div>
+              <div id="room-list" class="room-grid"></div>
+            </section>
+             <p id="lobby-footnote" class="lobby-footnote meta-label">5-MINUTE ROUNDS · ROOM-ONLY CHAT · LIVE SCOREBOARDS · RESPAWN &amp; GO AGAIN</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="game-screen" class="screen game-screen" aria-label="Live multiplayer match" hidden>
+        <div class="game-toolbar">
+          <div class="game-room-heading"><strong id="game-room-name">Open arena</strong><span id="game-map-name" class="meta-label">OUTPOST / FREE-FOR-ALL</span></div>
+          <div class="match-indicators"><span id="game-player-count" class="badge badge-neutral">1 / 8 PLAYERS</span><span id="round-timer" class="match-clock">05:00</span></div>
+          <div class="button-group"><button id="copy-invite" class="btn btn-ghost btn-compact" type="button">Invite <span id="game-room-code" class="code-label"></span></button><button id="toggle-sound" class="btn btn-ghost btn-compact" type="button" aria-pressed="false">Sound off</button><button id="toggle-scoreboard" class="btn btn-ghost btn-compact" type="button" aria-expanded="false" aria-controls="scoreboard">Scoreboard</button><button id="pause-game" class="btn btn-secondary btn-compact" type="button">Menu <kbd>ESC</kbd></button></div>
+        </div>
+        <div class="arena-stage">
+          <div id="game-container" class="game-canvas"></div>
+          <div id="game-loading" class="arena-overlay" role="status"><div class="float-card loading-card"><span class="loading-spinner" aria-hidden="true"></span><strong>Deploying your operator…</strong><span class="muted">Preparing the arena.</span></div></div>
+          <aside id="player-hud" class="player-hud float-card" aria-label="Your player stats">
+            <div class="hud-identity"><strong id="hud-name">Player</strong><span id="hud-operator" class="badge badge-neutral">VANGUARD</span></div>
+            <div class="hud-stat-heading"><span class="meta-label">HEALTH</span><span id="hud-health" class="hud-health">110 / 110</span></div>
+            <div id="health-bar" class="meter meter-health" role="progressbar" aria-label="Health" aria-valuemin="0" aria-valuemax="110" aria-valuenow="110"><span id="health-fill"></span></div>
+            <div class="ammo-line"><div><span id="hud-weapon" class="meta-label">CARBINE</span><span id="hud-reload" class="reload-label">READY</span></div><div><strong id="hud-ammo" class="ammo-number">30</strong><span id="hud-reserve" class="ammo-reserve">/ 120</span></div></div>
+            <div class="hud-stat-heading"><span class="meta-label">SPRINT ENERGY</span><span class="meta-label">SHIFT</span></div><div id="stamina-bar" class="meter meter-stamina" role="progressbar" aria-label="Sprint energy" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><span id="stamina-fill"></span></div>
+          </aside>
+          <aside id="survival-hud" class="survival-hud float-card" aria-label="Squad survival stats" hidden>
+            <div class="survival-heading"><span id="survival-phase" class="badge badge-ok">PREPARE</span><strong id="survival-wave">WAVE 1</strong></div>
+            <div class="survival-stats"><div><span class="meta-label">HOSTILES</span><strong id="survival-remaining">0</strong></div><div><span class="meta-label">TEAM SCORE</span><strong id="survival-score">0</strong></div><div><span class="meta-label">ALIVE</span><strong id="survival-alive">1/1</strong></div></div>
+            <div id="wave-progress" class="meter meter-wave" role="progressbar" aria-label="Wave cleared" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="wave-progress-fill"></span></div>
+            <p id="survival-status" class="survival-status">The horde is on its way.</p>
+          </aside>
+          <div id="kill-feed" class="kill-feed" aria-live="polite"></div>
+          <aside id="scoreboard" class="scoreboard float-card" aria-labelledby="scoreboard-title" hidden><div class="panel-heading"><h2 id="scoreboard-title" class="section-heading">This round</h2><button id="close-scoreboard" class="btn btn-ghost icon-button" type="button" aria-label="Close scoreboard">×</button></div><table class="data-table"><thead><tr><th scope="col">OPERATOR</th><th id="scoreboard-kills" scope="col" aria-label="Eliminations">K</th><th scope="col" aria-label="Deaths">D</th></tr></thead><tbody id="scoreboard-body"></tbody></table><p id="scoreboard-hint" class="form-hint">Most eliminations wins. Ties favor fewer deaths.</p></aside>
+          <aside class="chat-panel float-card" aria-label="Room chat"><div class="chat-heading"><span class="meta-label">ROOM RADIO</span><span class="meta-label">ENTER TO CHAT</span></div><div id="chat-messages" class="chat-messages" role="log" aria-live="polite" aria-label="Room messages"></div><form id="chat-form" class="chat-form"><label class="sr-only" for="chat-input">Message your room</label><input id="chat-input" class="form-input" placeholder="Say something to your room…" maxlength="160" autocomplete="off" required /><button id="send-chat" class="btn btn-secondary icon-button" type="submit" aria-label="Send room message" data-requires-connection>↑</button></form></aside>
+          <aside class="minimap-panel float-card" aria-label="Arena minimap"><div class="chat-heading"><span class="meta-label" id="minimap-label">OUTPOST</span><span class="badge badge-info">YOU</span></div><canvas id="minimap" width="192" height="144" aria-label="Map showing your position and other players"></canvas><p id="minimap-legend" class="minimap-legend">● YOU · ● ENEMIES</p></aside>
+          <div class="touch-controls" aria-label="Touch game controls"><div class="touch-pad"><button class="touch-key touch-up" data-touch="up" aria-label="Move up">↑</button><button class="touch-key touch-left" data-touch="left" aria-label="Move left">←</button><button class="touch-key touch-down" data-touch="down" aria-label="Move down">↓</button><button class="touch-key touch-right" data-touch="right" aria-label="Move right">→</button></div><div class="touch-actions"><button class="touch-key" data-touch="reload" aria-label="Reload">R</button><button class="touch-key touch-fire" data-touch="shoot" aria-label="Fire weapon">FIRE</button></div></div>
+          <div id="respawn-overlay" class="arena-overlay respawn-overlay" hidden><div class="float-card respawn-card"><span class="badge badge-danger">OPERATOR DOWN</span><h2 id="respawn-title" class="page-title">Down. Not out.</h2><p id="eliminated-by" class="muted">Time for a new angle.</p><button id="respawn-button" class="btn btn-primary btn-wide" type="button" data-requires-connection disabled>Reinsert in 4s</button><p id="respawn-hint" class="form-hint">Your scoreboard stays. Your next chance is coming.</p></div></div>
+          <div id="connection-overlay" class="arena-overlay" role="status" hidden><div class="float-card loading-card"><span class="loading-spinner" aria-hidden="true"></span><h2 class="section-heading">Radio connection lost.</h2><p class="muted">Trying to reconnect and rejoin your room…</p></div></div>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="room-dialog" class="modal" aria-labelledby="room-dialog-title">
+      <div class="modal-heading"><div><span class="meta-label">MAKE IT YOURS</span><h2 id="room-dialog-title" class="section-heading">Create a room</h2></div><button id="close-room-dialog" class="btn btn-ghost icon-button" type="button" aria-label="Close create room dialog">×</button></div>
+      <form id="create-room-form">
+        <div class="form-field"><label class="form-label" for="room-name">ROOM NAME</label><input id="room-name" class="form-input" minlength="3" maxlength="32" required autocomplete="off" /></div>
+        <div class="form-field"><label class="form-label" for="room-mode">GAME MODE</label><select id="room-mode" class="form-select"><option value="arena">Arena PvP — free-for-all</option><option value="zombies">Co-op Zombies — wave survival</option></select></div>
+        <div class="form-field"><label class="form-label" for="room-capacity">PLAYER LIMIT</label><select id="room-capacity" class="form-select" aria-describedby="room-capacity-hint"></select><p id="room-capacity-hint" class="form-hint">Choose room capacity.</p></div>
+        <label class="checkbox-label"><input id="room-private" type="checkbox" /><span><strong>Private room</strong><span class="form-hint">Hidden from the lobby. Friends join with your invite code.</span></span></label>
+        <p id="create-room-error" class="form-error" role="alert" hidden></p><button id="create-room-submit" class="btn btn-primary btn-wide" type="submit" data-requires-connection>Create &amp; play <span aria-hidden="true">→</span></button>
+      </form>
+    </dialog>
+    <dialog id="pause-dialog" class="modal pause-modal" aria-labelledby="pause-title"><span class="meta-label">TAKE A BREATHER</span><h2 id="pause-title" class="page-title">Stay in the fight?</h2><p class="muted">The match continues while this menu is open.</p><div class="pause-actions"><button id="resume-game" class="btn btn-primary btn-wide" type="button">Resume match <span aria-hidden="true">→</span></button><button id="leave-match" class="btn btn-danger btn-wide" type="button" data-requires-connection>Leave for the lobby</button></div><p class="form-hint">Room code: <strong id="pause-room-code"></strong></p></dialog>
+    <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
+    <noscript><p class="state-surface">BattleGrid needs JavaScript to connect to multiplayer rooms.</p></noscript>
   </body>
 </html>

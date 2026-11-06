@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // Default model: agentrouter/gpt-6.1-sol
+  "model": "agentrouter/gpt-6.1-sol",
+
+  "providers": {
+    "agentrouter": {
+      "name": "AgentRouter",
+
+      // API key is read from this environment variable.
+      "env": ["AGENTROUTER_API_KEY"],
+
+      // Use the Responses API runtime (/v1/responses) instead of Chat Completions.
+      "package": "@opencode/ai/providers/openai-compatible/responses",
+
+      "settings": {
+        "baseURL": "https://agentrouter.org/v1"
+
+        // Alternative: put the key directly here instead of an env var.
+        // "apiKey": "{env:AGENTROUTER_API_KEY}",
+      },
+
+      "models": {
+        "gpt-6.1-sol": {
+          "name": "GPT-6.1 Sol"
+        }
+      }
+    }
+  }
+}
